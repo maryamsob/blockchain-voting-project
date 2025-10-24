@@ -1,49 +1,63 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+class Candidate:
+    def __init__(self, name):
+        self.name = name
+        self.vote_count = 0
 
-contract StudentVoting {
-    struct Candidate {
-        uint id;
-        string name;
-        uint voteCount;
-    }
 
-    mapping(uint => Candidate) public candidates;
-    mapping(address => bool) public hasVoted;
-    uint public candidatesCount;
+class StudentVoting:
+    def __init__(self, candidate_names):
+        self.candidates = {}
 
-    event Voted(address voter, uint candidateId);
+        # Initialize candidates
+        for name in candidate_names:
+            self.candidates[name.lower()] = Candidate(name)
 
-    constructor(string[] memory candidateNames) {
-        for (uint i = 0; i < candidateNames.length; i++) {
-            candidatesCount++;
-            candidates[candidatesCount] = Candidate(candidatesCount, candidateNames[i], 0);
-        }
-    }
+    def vote(self, candidate_name):
+        name_key = candidate_name.lower()
 
-    function vote(uint candidateId) public {
-        require(!hasVoted[msg.sender], "You have already voted!");
-        require(candidateId > 0 && candidateId <= candidatesCount, "Invalid candidate!");
+        if name_key not in self.candidates:
+            raise Exception("Invalid candidate name!")
 
-        hasVoted[msg.sender] = true;
-        candidates[candidateId].voteCount++;
-        emit Voted(msg.sender, candidateId);
-    }
+        self.candidates[name_key].vote_count += 1
+        print(f"Voted for {candidate_name.capitalize()}")
 
-    function getCandidateVotes(uint candidateId) public view returns (uint) {
-        require(candidateId > 0 && candidateId <= candidatesCount, "Invalid candidate!");
-        return candidates[candidateId].voteCount;
-    }
+    def get_candidate_votes(self, candidate_name):
+        name_key = candidate_name.lower()
+        if name_key not in self.candidates:
+            raise Exception("Invalid candidate name!")
+        return self.candidates[name_key].vote_count
 
-    function getWinner() public view returns (string memory winnerName, uint winnerVotes) {
-        uint maxVotes = 0;
-        uint winnerId = 0;
-        for (uint i = 1; i <= candidatesCount; i++) {
-            if (candidates[i].voteCount > maxVotes) {
-                maxVotes = candidates[i].voteCount;
-                winnerId = i;
-            }
-        }
-        return (candidates[winnerId].name, candidates[winnerId].voteCount);
-    }
-}
+    def get_winner(self):
+        max_votes = 0
+        winner_name = None
+
+        for candidate in self.candidates.values():
+            if candidate.vote_count > max_votes:
+                max_votes = candidate.vote_count
+                winner_name = candidate.name
+
+        if winner_name is None:
+            return None, 0
+        return winner_name, max_votes
+
+
+# Example Usage
+if __name__ == "__main__":
+    # Create voting system with given candidates
+    election = StudentVoting(["maryam", "fathima", "aysha"])
+
+    # Simulate votes (you can change or add more)
+    election.vote("maryam")
+    election.vote("fathima")
+    election.vote("maryam")
+    election.vote("aysha")
+    election.vote("maryam")
+
+    # Print votes for each candidate
+    print("\nVote Counts:")
+    for name in ["maryam", "fathima", "aysha"]:
+        print(f"{name.capitalize()}: {election.get_candidate_votes(name)} votes")
+
+    # Get winner
+    winner_name, winner_votes = election.get_winner()
+    print(f"\nWinner: {winner_name.capitalize()} with {winner_votes} votes")
