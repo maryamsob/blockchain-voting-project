@@ -1,63 +1,151 @@
+import hashlib
+import time
+import json
+
+# ------------------ Blockchain Core ------------------
+class Block:
+    def __init__(self, index, data, previous_hash):
+        self.index = index
+        self.timestamp = time.ctime()
+        self.data = data
+        self.previous_hash = previous_hash
+        self.hash = self.calculate_hash()
+
+    def calculate_hash(self):
+        block_string = f"{self.index}{self.timestamp}{json.dumps(self.data)}{self.previous_hash}"
+        return hashlib.sha256(block_string.encode()).hexdigest()
+
+
+class Blockchain:
+    def __init__(self):
+        self.chain = [self.create_genesis_block()]
+
+    def create_genesis_block(self):
+        return Block(0, {"Genesis Block": "Student Voting System"}, "0")
+
+    def get_latest_block(self):
+        return self.chain[-1]
+
+    def add_block(self, new_block):
+        new_block.previous_hash = self.get_latest_block().hash
+        new_block.hash = new_block.calculate_hash()
+        self.chain.append(new_block)
+
+    def display_chain(self):
+        print("\n🔗 Blockchain Ledger:")
+        for block in self.chain:
+            print(f"Index: {block.index}")
+            print(f"Timestamp: {block.timestamp}")
+            print(f"Data: {block.data}")
+            print(f"Hash: {block.hash[:20]}...")
+            print(f"Previous Hash: {block.previous_hash[:20]}...\n")
+
+    def is_chain_valid(self):
+        for i in range(1, len(self.chain)):
+            curr = self.chain[i]
+            prev = self.chain[i - 1]
+            if curr.hash != curr.calculate_hash():
+                return False
+            if curr.previous_hash != prev.hash:
+                return False
+        return True
+
+
+# ------------------ Voting System ------------------
 class Candidate:
     def __init__(self, name):
         self.name = name
         self.vote_count = 0
 
+    def __str__(self):
+        return f"{self.name}: {self.vote_count} votes"
 
-class StudentVoting:
-    def __init__(self, candidate_names):
-        self.candidates = {}
 
-        # Initialize candidates
-        for name in candidate_names:
-            self.candidates[name.lower()] = Candidate(name)
+class StudentVotingSystem:
+    def __init__(self):
+        self.blockchain = Blockchain()
+        self.candidates = {
+            "maryam": Candidate("Maryam"),
+            "fathima": Candidate("Fathima"),
+            "aysha": Candidate("Aysha")
+        }
 
+    # ---------------- Vote Management ----------------
     def vote(self, candidate_name):
         name_key = candidate_name.lower()
-
         if name_key not in self.candidates:
-            raise Exception("Invalid candidate name!")
+            print("❌ Invalid candidate name!")
+            return
 
+        # Record vote
         self.candidates[name_key].vote_count += 1
-        print(f"Voted for {candidate_name.capitalize()}")
 
-    def get_candidate_votes(self, candidate_name):
-        name_key = candidate_name.lower()
-        if name_key not in self.candidates:
-            raise Exception("Invalid candidate name!")
-        return self.candidates[name_key].vote_count
+        transaction = {
+            "action": "VOTE",
+            "candidate": self.candidates[name_key].name,
+            "timestamp": time.ctime()
+        }
 
+        new_block = Block(len(self.blockchain.chain), transaction, self.blockchain.get_latest_block().hash)
+        self.blockchain.add_block(new_block)
+
+        print(f"✅ Vote recorded for {self.candidates[name_key].name}")
+
+    # ---------------- View Vote Counts ----------------
+    def show_votes(self):
+        print("\n🗳️ Current Vote Counts:")
+        for c in self.candidates.values():
+            print(f"{c.name}: {c.vote_count} votes")
+
+    # ---------------- Determine Winner ----------------
     def get_winner(self):
-        max_votes = 0
-        winner_name = None
+        winner = max(self.candidates.values(), key=lambda c: c.vote_count)
+        print(f"\n🏆 Winner: {winner.name} with {winner.vote_count} votes")
 
-        for candidate in self.candidates.values():
-            if candidate.vote_count > max_votes:
-                max_votes = candidate.vote_count
-                winner_name = candidate.name
-
-        if winner_name is None:
-            return None, 0
-        return winner_name, max_votes
+    # ---------------- Verify Blockchain ----------------
+    def verify_chain(self):
+        print(f"\n✅ Blockchain valid? {self.blockchain.is_chain_valid()}")
 
 
-# Example Usage
+# ------------------ Interactive CLI ------------------
 if __name__ == "__main__":
-    # Create voting system with given candidates
-    election = StudentVoting(["maryam", "fathima", "aysha"])
+    voting_system = StudentVotingSystem()
+    exit_symbol = "."
 
-    # Simulate votes (you can change or add more)
-    election.vote("maryam")
-    election.vote("fathima")
-    election.vote("maryam")
-    election.vote("aysha")
-    election.vote("maryam")
+    print("\n🗳️ Welcome to Blockchain-based Student Voting System")
+    print(f"Type '{exit_symbol}' anytime to exit.\n")
 
-    # Print votes for each candidate
-    print("\nVote Counts:")
-    for name in ["maryam", "fathima", "aysha"]:
-        print(f"{name.capitalize()}: {election.get_candidate_votes(name)} votes")
+    while True:
+        print("\nOptions:")
+        print("1. Cast Vote")
+        print("2. Show Vote Counts")
+        print("3. Show Winner")
+        print("4. Display Blockchain Ledger")
+        print("5. Verify Blockchain")
+        print(f"Type '{exit_symbol}' to Exit\n")
 
-    # Get winner
-    winner_name, winner_votes = election.get_winner()
-    print(f"\nWinner: {winner_name.capitalize()} with {winner_votes} votes")
+        choice = input("Enter option number: ").strip()
+        if choice == exit_symbol:
+            print("👋 Exiting Voting System.")
+            break
+
+        if choice == "1":
+            candidate = input("Enter Candidate Name (Maryam / Fathima / Aysha): ").strip()
+            if candidate == exit_symbol:
+                continue
+            voting_system.vote(candidate)
+
+        elif choice == "2":
+            voting_system.show_votes()
+
+        elif choice == "3":
+            voting_system.get_winner()
+
+        elif choice == "4":
+            voting_system.blockchain.display_chain()
+
+        elif choice == "5":
+            voting_system.verify_chain()
+
+        else:
+            print("❌ Invalid option. Try again.")
